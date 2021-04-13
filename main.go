@@ -53,7 +53,7 @@ import (
 )
 
 //Version = version number
-const Version = "1.0.0.3"
+const Version = "1.0.0.4"
 
 //DiskStats structure for diskstats return
 type DiskStats struct {
@@ -828,97 +828,12 @@ func getalldrives() []string {
 	return drives
 }
 
-//initializedisk will try to put a partition table on a disk, returning exit code on, 0 for success, 1 for fail
-func initializedisk(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	pathParams := mux.Vars(r)
-	drivenumber := pathParams["drivenumber"]
-
-	fmt.Printf("drivenumber is %v\n", drivenumber)
-	m, err := regexp.MatchString("[0-9]", drivenumber)
-	//fmt.Printf("m is %v", m)
-	if err != nil || m != true {
-		errmsg := `{"message": "Drive number not recognized or not input. exiting."}`
-		fmt.Printf("%v", errmsg)
-		w.Write([]byte(errmsg))
-		return
-	}
-
-	var cmdargs1 = fmt.Sprintf("Initialize-Disk -Number %v |Convertto-json", drivenumber)
-	out, err := exec.Command("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe", cmdargs1).Output()
-	if err != nil {
-		//		log.Print("error: %v \n" ,&err)
-		if exitError, ok := err.(*exec.ExitError); ok {
-			out := exitError.ExitCode()
-			bs := []byte(strconv.Itoa(out))
-			out2 := fmt.Sprintf("{\"status\": \"%s\"}", bs)
-			bs2 := []byte(out2)
-
-			//fmt.Println(bs)
-			w.Write(bs2)
-			//return exitError.ExitCode()
-			log.Writer()
-			return
-
-		}
-	} //
-	out = []byte(`{"status": "0"}`)
-	w.Write(out)
-}
 
 
 
-func initializediskps(drivenumber string) int {
 
-	var cmdargs1 = fmt.Sprintf("Initialize-Disk -Number %v |Convertto-json", drivenumber)
-	_, err := exec.Command("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe", cmdargs1).Output()
-	if err != nil {
-		log.Writer()
-		return 0
-	} //
 
-	//now check to see if it worked or not, we have a function for that already
-	diditwork := Checkdiskinitialized(drivenumber)
-	return diditwork
-}
 
-//Checkdiskinitialized checks to see if the disk is initialized or not, used by initandpartitionandformatandnamedisk
-func Checkdiskinitialized(drivenumber string) int {
-
-	var cmdargs1 = fmt.Sprintf("get-disk | where-object number -eq %v |where-object PartitionStyle -eq 'RAW'|measure-object| %% { $_.Count }", drivenumber)
-	out, err := exec.Command("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe", cmdargs1).Output()
-	if err != nil {
-		fmt.Printf("error: %v \n", &err)
-		return 0
-	}
-	fmt.Printf("output of checkdisksinitialized %s\n", out)
-	//byteNumber := []byte("0")
-	//fmt.Print(out)
-	//fmt.Println(out)
-	intNumber, _ := strconv.Atoi(string(out[0]))
-	fmt.Printf("raw disks found = %d\n", intNumber)
-	return int(intNumber)
-}
-
-//Checkdiskinitialized checks to see if the disk is initialized or not, used by initandpartitionandformatandnamedisk
-func wipedisk(drivenumber string) int {
-	outint := 0
-	var cmdargs1 = fmt.Sprintf("clear-disk -Number %v -removedata -confirm:$false", drivenumber)
-	_, err := exec.Command("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe", cmdargs1).Output()
-	if err != nil {
-		fmt.Printf("wipe disk error: %v \n", &err)
-		return 0
-	}
-	//if bad exit code return that, else return 0
-	if exitError, ok := err.(*exec.ExitError); ok {
-		outint = exitError.ExitCode()
-		fmt.Printf("Wipedisk error happened, exit code %d\n", outint)
-		return outint
-	}
-	fmt.Printf("Wipedisk function return is %d\n", outint)
-	return outint
-}
 
 //checkforpartition checks and counts partitions on a disk number
 func checkforpartition(drivenumber string) int {
@@ -987,9 +902,7 @@ func listpathsauthed(w http.ResponseWriter, r *http.Request) {
 [{
 "url1": "/addexports/{driveletter:}/{drivename}/{token}",
 "url2": "/removeexports/{exportname}/{token}",
-"url3": "/initializedisk/{drive number}/{token}",
-"url4": "/initandpartitionandformatandnamedisk/{drive number}/{drive name}/{token}",
-"url5": "/exitnow/{token}"
+"url3": "/exitnow/{token}"
 }] }`))
 }
 
@@ -999,72 +912,7 @@ func exitnow(w http.ResponseWriter, r *http.Request) {
 	os.Exit(1)
 }
 
-//partitionandformatandnamedisknew  will try to put a partition table on a disk, format it, and label it, and return the json output of the success or json message on fail.
-func initandpartitionandformatandnamedisknew(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	pathParams := mux.Vars(r)
-	drivenumber := pathParams["drivenumber"]
-	drivename := pathParams["drivename"]
 
-	//check drive number is sent
-	fmt.Printf("drivenumber is %v\n", drivenumber)
-	number, err := regexp.MatchString("[0-9]", drivenumber)
-	//fmt.Printf("m is %v", m)
-	if err != nil || number != true {
-		errmsg := `{"message": "Drive number not recognized or not input. exiting."}`
-		fmt.Printf("%v", errmsg)
-		w.Write([]byte(errmsg))
-		return
-	}
-
-	//check drive number exists on the system or abort 1=good, 0=bad, missing or system disk
-	doesdriveexists := doesdriveexists(drivenumber)
-	if doesdriveexists == 0 {
-		//fmt.Printf("Drive number %v is not found or a system disk, aborting", drivenumber)
-		errmsg := fmt.Sprintf(`{"message": "Drive number %v is not found or a system disk, aborting"}`, drivenumber)
-		fmt.Printf("%v", errmsg)
-		w.Write([]byte(errmsg))
-		return
-	}
-
-	//check drivename is sent
-	fmt.Printf("drivename is %v\n", drivename)
-	name, err := regexp.MatchString("^[a-zA-Z]+$", drivename)
-	//fmt.Printf("m is %v", m)
-	if err != nil || name != true {
-		errmsg := `{"message": "Drive name not recognized or has bad characters, A-Z and a-z only, aka vnir or VNIR not /vnir. exiting."}`
-		fmt.Printf("%v", errmsg)
-		w.Write([]byte(errmsg))
-		return
-	}
-
-	//wipe it and reinit to destroy previous contents
-	fmt.Printf("disk number %s  is being wiped\n", drivenumber)
-	wipestatus := wipedisk(drivenumber)
-	fmt.Printf("result of disk wipe is %v\n", wipestatus)
-
-	didinitwork := initializediskps(drivenumber)
-	//	fmt.Printf("\nfunction call initializediskps(%s) returned: %d\n", drivenumber, didinitwork)
-	if didinitwork != 0 {
-		fmt.Printf("disk init result = %d for disk %v\n this should be a 0, so giving up", didinitwork, drivenumber)
-		return
-	}
-	fmt.Println("disk has been re-initted, proceeding to partition and format it.")
-	var cmdargs1 = fmt.Sprintf("new-partition -DiskNumber %v -assigndriveletter -usemaximumsize |  format-volume -filesystem ntfs -confirm:$false -newfilesystemlabel %v |Convertto-json", drivenumber, drivename)
-	out, err := exec.Command("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe", cmdargs1).Output()
-	if err != nil {
-		//		log.Print("error: %v \n" ,&err)
-		if _, ok := err.(*exec.ExitError); ok {
-			errmsg := fmt.Sprintf(`{"message": "Error occurred running \n%v \n. exiting."}`, cmdargs1)
-
-			fmt.Printf("%v", errmsg)
-			w.Write([]byte(errmsg))
-			return
-		}
-	}
-	w.Write(out)
-}
 
 //DelExports will an nfs export
 func DelExports(w http.ResponseWriter, r *http.Request) {
@@ -1623,11 +1471,6 @@ func mainroutine() {
 	apiauthed := r.PathPrefix("/apiauthed/v1").Subrouter()
 	//these ones are destructive, and need the key to operate
 	apiauthed.Use(authentication)
-	//will try to put a partition table on, format it with ntfs, and label it, (/vnir or /mwir?)
-	apiauthed.HandleFunc("/initandpartitionandformatandnamedisk/{drivenumber}/{drivename}/{token}", initandpartitionandformatandnamedisknew).Methods(http.MethodGet)
-	//will try to initialize a raw disk (just formed raids are raw, and have no partition table yet.)
-	apiauthed.HandleFunc("/initializedisk/{drivenumber}/{token}", initializedisk).Methods(http.MethodGet)
-	//attempt to delete a raid, assumes groups of four disks 0-3, 4-7, 8-11
 	//try to create a new nfs export, driveletter will be the edos drive letter or "all"
 	apiauthed.HandleFunc("/addexports/{driveletter}/{drivename}/{token}", AddExports).Methods(http.MethodGet)
 	//try to remove an nfs export, by exported name

@@ -90,6 +90,9 @@ func installService(name, desc string) error {
 	if err != nil {
 		return err
 	}
+
+	//copy to the right place, so its not accidentally run from someoneons desktop
+
 	m, err := mgr.Connect()
 	if err != nil {
 		return err

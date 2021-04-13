@@ -3,7 +3,7 @@
   <assemblyIdentity
     type="win64"
     name="Github.com.JosephSpurrier.GoVersionInfo"
-    version="1.0.0.3"
+    version="1.0.0.4"
     processorArchitecture="*"/>
  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
    <security>
