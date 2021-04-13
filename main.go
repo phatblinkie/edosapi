@@ -1262,6 +1262,9 @@ func storetoken(tokenstr string) (string, error) {
 	return out, err
 }
 
+
+
+
 //parseArgs will check command args to see if there is a service install or remove tag and take appropriate actions
 func parseArgs() {
 	isIntSess, err := svc.IsAnInteractiveSession()
