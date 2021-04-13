@@ -53,7 +53,7 @@ import (
 )
 
 //Version = version number
-const Version = "1.0.0.1"
+const Version = "1.0.0.3"
 
 //DiskStats structure for diskstats return
 type DiskStats struct {
@@ -367,7 +367,7 @@ func getexportsps() []byte {
 
 	exportarrayresulttestdata := []byte(`
 	[ {
-           "name":  "powershell nfs missing",
+           "name":  "powershell_nfs_missing",
            "anonymousaccess":  true,
            "anonymousuid":  65534,
            "anonymousgid":  65534,
@@ -375,7 +375,7 @@ func getexportsps() []byte {
            "path":  "D:\\"
        },
        {
-           "name":  "Please install nfs",
+           "name":  "Please_install_nfs",
            "anonymousaccess":  false,
            "anonymousuid":  -2,
            "anonymousgid":  -2,
@@ -386,7 +386,7 @@ func getexportsps() []byte {
 
 	//	1 export result is
 	exportnoarraytestdata := []byte(`   		{
-              "name":  "test",
+              "name":  "Error_occurred",
               "anonymousaccess":  true,
               "anonymousuid":  65534,
               "anonymousgid":  65534,
@@ -443,115 +443,11 @@ func printSlice(s []byte) {
 	fmt.Printf("len=%d cap=%d %v\n", len(s), cap(s), s)
 }
 
-func importdrivepacksps() []byte {
-	var cmdargs1 = "/c1 /fall import j"
-	out, err := exec.Command("C:\\Program Files (x86)\\MegaRAID Storage Manager\\storcli64.exe", cmdargs1).Output()
-	if err != nil {
-		//		log.Print("error: %v \n" ,&err)
-		errfixed := strings.ReplaceAll(err.Error(), `"`, `\"`)
-		log.Printf("error import foreign array. error: %v \n", errfixed)
-		errmsg := fmt.Sprintf(`{"message": "Error importing foreign array. error: %v \n"}`, errfixed)
-		fmt.Printf("%v", errmsg)
-		return []byte(errmsg)
-	}
-	return out
-}
 
-//MakeDrivesUnconfiguredGoodps is the powershell script to tell the raid controller to change the state to good. will error if already good, so returns are trivial and need inspection
-func MakeDrivesUnconfiguredGoodps() []byte {
-	var cmdargs1 = "/c1 /e245 /sall set good j"
-	out, err := exec.Command("C:\\Program Files (x86)\\MegaRAID Storage Manager\\storcli64.exe", cmdargs1).Output()
-	if err != nil {
-		//		log.Print("error: %v \n" ,&err)
-		errfixed := strings.ReplaceAll(err.Error(), `"`, `\"`)
-		fmt.Printf("error making drives unconfigured good. error: %v \n", errfixed)
-		errmsg := fmt.Sprintf(`{"message": "error making drives unconfigured good. error: %v \n"}`, errfixed)
-		return []byte(errmsg)
-	}
-	return out
-}
 
-//getraiddrivestatusps is the powershell script to get the status of all drives on the raid card.
-func getraiddrivestatusps() []byte {
-	//just get the output of the drives, dont go into a logic rabbit hole to try to fix, let the user take actions off the data.
-	var cmdargs1 = "/c1 show j"
-	out, err := exec.Command("C:\\Program Files (x86)\\MegaRAID Storage Manager\\storcli64.exe", cmdargs1).Output()
-	if err != nil {
-		errfixed := strings.ReplaceAll(err.Error(), `"`, `\"`)
-		fmt.Printf("Error showing drive status, error: %v \n", errfixed)
-		errmsg := fmt.Sprintf(`{"message": "Error showing drive status, error: %v \n"}`, errfixed)
-		return []byte(errmsg)
-	}
-	return out
-}
 
-//GetUnitInfops is the powershell script to get all unit status (degraded, optimal etc)
-func GetUnitInfops() []byte {
-	//gets unit info, only shows if the unit was imported
-	var cmdargs1 = "/c1 /vall show j"
-	out, err := exec.Command("C:\\Program Files (x86)\\MegaRAID Storage Manager\\storcli64.exe", cmdargs1).Output()
-	if err != nil {
-		errfixed := strings.ReplaceAll(err.Error(), `"`, `\"`)
-		fmt.Printf(`{"message": "error showing unit info, error: %v \n"}`, errfixed)
-		errmsg := fmt.Sprintf(`{"message": "error showing unit info, error: %v \n"}`, errfixed)
-		return []byte(errmsg)
-	}
-	log.Printf("GetUnitInfo returned: \n %s", out)
-	return out
-}
 
-//
-func createraidAPI(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	pathParams := mux.Vars(r)
-	ports := pathParams["ports"]
-	name := pathParams["name"]
 
-	fmt.Printf("ports is %v\n name is %v\n", ports, name)
-	m, err := regexp.MatchString("[0]\\-[3]|[4]\\-[7]|[8]\\-[1][1]", ports)
-	fmt.Printf("m is %v", m)
-	if err != nil || m != true {
-		errmsg := `{"message": "Drive numbers not recognized.only 0 - 3,4 - 7,8 - 11 are accepted."}`
-		fmt.Printf("%v", errmsg)
-		w.Write([]byte(errmsg))
-		return
-	}
-
-	var cmdargs1 = fmt.Sprintf("/c1 add vd type=r5 name=%v drives=245:%v SED direct j", name, ports)
-	out, err := exec.Command("C:\\Program Files (x86)\\MegaRAID Storage Manager\\storcli64.exe", cmdargs1).Output()
-	if err != nil {
-		log.Printf("error creating raid, error: %v \n", err)
-		//errstring := err.Error()
-		errfixed := strings.ReplaceAll(err.Error(), `"`, `\"`)
-		errmsg := string(fmt.Sprintf(`{"message": "Error creating raid, error: %v"}`, errfixed))
-		fmt.Printf("%v", errmsg)
-		w.Write([]byte(errmsg))
-		return
-	}
-	fmt.Printf(`{"message": "Createraid command output: %v"}`, string(out))
-	//json.NewEncoder(w).Encode(out) //not needed, output is already json
-	w.Write(out)
-	return
-}
-
-//rescandiskps is the powershell to rescan all disks on the raid controller.
-func rescandisksps() []byte {
-	//rescans the disks
-	var cmdargs1 = "/c1 restart j"
-	out, err := exec.Command("C:\\Program Files (x86)\\MegaRAID Storage Manager\\storcli64.exe", cmdargs1).Output()
-	if err != nil {
-		//		log.Print("error: %v \n" ,&err)
-		//log.Writer()
-		//log.Printf("error rescanning disks on /c1, error: %v \n", err)
-		errfixed := strings.ReplaceAll(err.Error(), `"`, `\"`)
-		errmsg := string(fmt.Sprintf(`{"message": "error rescanning disks on /c1, error: %v \n"}`, errfixed))
-		fmt.Printf("%v", errmsg)
-		return []byte(errmsg)
-	}
-	log.Printf("controller restart returned: \n %s", out)
-	return out
-}
 
 func get(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -570,70 +466,6 @@ func getexports(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write(getexportsps())
 }
-
-func importdrivepacks(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(importdrivepacksps())
-}
-
-func getraiddrivestatus(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	w.Write(getraiddrivestatusps())
-}
-
-//MakeDrivesUnconfiguredGood will try to change status to good on all drives attached. (in hopes of changing unconfigured bad to unconfigured good)
-func MakeDrivesUnconfiguredGood(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	w.Write(MakeDrivesUnconfiguredGoodps())
-}
-
-//GetUnitInfo will get the status of the current raids
-func GetUnitInfo(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	w.Write(GetUnitInfops())
-}
-
-func rescandisks(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	w.Write(rescandisksps())
-}
-
-//func params(w http.ResponseWriter, r *http.Request) {
-//	pathParams := mux.Vars(r)
-//	w.Header().Set("Content-Type", "application/json")
-//
-//	userID := -1
-//	var err error
-//	if val, ok := pathParams["userID"]; ok {
-//		userID, err = strconv.Atoi(val)
-//		if err != nil {
-//			w.WriteHeader(http.StatusInternalServerError)
-//			w.Write([]byte(`{"message": "need a number"}`))
-//			return
-//		}
-//	}
-//	commentID := -1
-//	if val, ok := pathParams["commentID"]; ok {
-//		commentID, err = strconv.Atoi(val)
-//		if err != nil {
-//			w.WriteHeader(http.StatusInternalServerError)
-//			w.Write([]byte(`{"message": "need a number"}`))
-//			return
-//		}
-//	}
-//	query := r.URL.Query()
-//	location := query.Get("location")
-//	w.Write([]byte(fmt.Sprintf(`{"userID": %d, "commentID": %d, "location": "%s" }`, userID, commentID, location)))
-//}
 
 //CollectDiskIoStatsInBackground will gather disk io stats per 10 seconds (or value called)
 //store in the db, for around 500 iterations
@@ -1035,179 +867,7 @@ func initializedisk(w http.ResponseWriter, r *http.Request) {
 	w.Write(out)
 }
 
-//
-//
-//function is incomplete, total pain to get the array info currently and dont want to waste time on it, when other functions are still needing to be worked.
-//
-//
-func deleteraid(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	pathParams := mux.Vars(r)
-	ports := pathParams["ports"]
 
-	fmt.Printf("raided ports to delete are %v\n", ports)
-	m, err := regexp.MatchString("[0]\\-[3]|[4]\\-[7]|[8]\\-[1][1]", ports)
-	//fmt.Printf("m is %v", m)
-	if err != nil || m != true {
-		errmsg := `{"message": "Drive numbers not recognized.only 0 - 3,4 - 7,8 - 11 are accepted."}`
-		fmt.Printf("%v", errmsg)
-		w.Write([]byte(errmsg))
-		return
-	}
-	msg := fmt.Sprintf(`{"message": "finding which drive group uses ports %v\n"}`, ports)
-	fmt.Printf("%v", msg)
-	//w.Write([]byte(msg))
-
-	//get the drive group of each drive asked for, make sure they are the same group or error
-	//get first number
-	//fmt.Println(string(ports[0]))
-	i, err := strconv.Atoi(string(ports[0]))
-	if err != nil {
-		fmt.Printf("conversion error = %v\n i is %d\n", err, i)
-	}
-	//now interate on it.. not needed for the grouping, but keeping for later use just in case
-	//endport := i + 4
-	//for i < endport {
-	//	out := getdrivegroupfromportnumber(i)
-	//	w.Write(out)
-	//	fmt.Printf("port is %d\n", i)
-	//	fmt.Printf("%v\n", out)
-	//	i++
-	//}
-	out, err := getdrivegroupfromportnumber(ports)
-	if err != nil {
-		fmt.Printf("error finding drive group for ports %v, aborting", ports)
-		errmsg := fmt.Sprintf(`{"message": "error finding drive group for ports %v,  exiting."}`, ports)
-		fmt.Printf("%v", errmsg)
-		w.Write([]byte(errmsg))
-		return
-	}
-	fmt.Printf("%v\n", string(out))
-	var res Drivegroupnumber
-	json.Unmarshal([]byte(out), &res)
-	//fmt.Printf("%v", res)
-	//size := len(res)
-	var intArray [4]int
-	iteration := 0
-	for _, res := range res {
-		drivenumber := res.EIDSlot
-		splitvar := strings.Split(drivenumber, ":")
-		fmt.Printf("drive portnumber:%v=DG:%d \n", splitvar[1], res.DG)
-		//add DG value to intArray for comparison after
-		intArray[iteration] = res.DG
-		iteration++
-	}
-	//test for equality of all elements in the array
-	//fmt.Println(intArray[0])
-	if (intArray[0] == intArray[1]) && (intArray[0] == intArray[2]) && (intArray[0] == intArray[3]) {
-		fmt.Printf("all drivegroups match, ok to delete drive group %d\n ", intArray[0])
-		fmt.Printf("locating virtual disk tied to drive group %v", intArray[0])
-		virtdisk := getvirtdiskfromdrivegroup(intArray[0])
-		del := removevirtualdisk(virtdisk)
-		w.Write(del)
-		return
-	}
-	w.Write(out)
-
-}
-
-//getvirtdiskfromdrivegroup will retrun the number of the virtual disk bound to drive group dg
-func getvirtdiskfromdrivegroup(dg int) int {
-	var cmdargs1 = fmt.Sprintf(`cd "C:\Program Files (x86)\MegaRAID Storage Manager\" ; $vd=.\storcli.exe /c1/vall show j | ConvertFrom-Json; $vd.Controllers."Response Data"."Virtual Drives"| where-object "DG/VD" -like "%v/*" |select-object "DG/VD"|ConvertTo-Json`, dg)
-	out, err := exec.Command("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe", cmdargs1).Output()
-	if err != nil {
-		msg := fmt.Sprintf(`{"message": "ERROR = %v"}`, err)
-		fmt.Printf("%v", msg)
-		//return []byte(msg)
-		return 404
-	} //
-	var res Vdisk
-	json.Unmarshal(out, &res)
-	splitvar := strings.Split(res.DGVD, "/")
-	fmt.Printf("virtual disk for drive group %v = %v\n", dg, splitvar[1])
-	intNumber, _ := strconv.Atoi(splitvar[1])
-	return intNumber
-}
-
-//Drivegroupnumber stores the results of the function getdrivegroupfromportnumber and or getindividualdrivegroupfromportnumber
-type Drivegroupnumber []struct {
-	DG      int    `json:"DG"`
-	State   string `json:"State"`
-	EIDSlot string `json:"EID:Slot"`
-}
-
-//Vdisk will map to the output of /c1/vall show
-type Vdisk struct {
-	DGVD string `json:"DG/VD"`
-}
-
-func removedrivegroupnumber(drivegroup int) []byte {
-	var cmdargs1 = fmt.Sprintf("/c1/v%v del force j", drivegroup)
-	fmt.Println(cmdargs1)
-	out, err := exec.Command("C:\\Program Files (x86)\\MegaRAID Storage Manager\\storcli64.exe", cmdargs1).Output()
-	if err != nil {
-		errfixed := strings.ReplaceAll(err.Error(), `"`, `\"`)
-		fmt.Printf(`{"message": "error deleting drivegroup, error: %v \n"}`, errfixed)
-		errmsg := fmt.Sprintf(`{"message": "error deleting drivegroup, error: %v \n"}`, errfixed)
-		return []byte(errmsg)
-	}
-	fmt.Printf("delete drivegroup returned: \n %s \n", out)
-	return out
-}
-
-func removevirtualdisk(virtualdisk int) []byte {
-	var cmdargs1 = fmt.Sprintf("/c1/v%v del force j", virtualdisk)
-	fmt.Println(cmdargs1)
-	out, err := exec.Command("C:\\Program Files (x86)\\MegaRAID Storage Manager\\storcli64.exe", cmdargs1).Output()
-	if err != nil {
-		errfixed := strings.ReplaceAll(err.Error(), `"`, `\"`)
-		fmt.Printf(`{"message": "error deleting virtualdisk, error: %v \n"}`, errfixed)
-		errmsg := fmt.Sprintf(`{"message": "error deleting virtualdisk, error: %v \n"}`, errfixed)
-		return []byte(errmsg)
-	}
-	fmt.Printf("delete virtualdisk returned: \n %s \n", out)
-	return out
-}
-
-func getdrivegroupfromportnumber(portrange string) ([]byte, error) {
-	//damn ms like sucks for regex, make different command for the port range of 8-11
-	var cmdargs1 = fmt.Sprintf(`cd "C:\Program Files (x86)\MegaRAID Storage Manager\" ; $dg=.\storcli.exe /c1 show j | ConvertFrom-Json; $dg.Controllers."Response Data"."TOPOLOGY"| where-object EID:SLOT -like 245:[%v] |select-object DG, State, EID:Slot|ConvertTo-Json`, portrange)
-
-	if portrange == "8-11" {
-		cmdargs1 = fmt.Sprint(`cd "C:\Program Files (x86)\MegaRAID Storage Manager\" ; $dg=.\storcli.exe /c1 show j | ConvertFrom-Json; $dg.Controllers."Response Data"."TOPOLOGY"| where-object EID:SLOT -like 245:* |where-object EID:SLOT -notlike 245:[0-7] |select-object DG, State, EID:Slot|ConvertTo-Json`)
-	}
-	out, err := exec.Command("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe", cmdargs1).Output()
-	if err != nil {
-		msg := fmt.Sprintf(`{"message": "ERROR = %v"}`, err)
-		fmt.Printf("%v", msg)
-
-		return []byte(msg), errors.New(msg)
-	} //
-
-	//was the data from the card valid? no length = no
-	sz := len(out)
-	if sz == 0 {
-		fmt.Printf("ERROR = out length is %v\n drive group not found\n", sz)
-		msg := fmt.Sprintf(`{"message": "ERROR = out length is %v\n drive group not found\n"}`, sz)
-		return []byte(msg), errors.New(msg)
-	}
-
-	//time.Sleep(20 * time.Second)
-	//os.Exit(1)
-	return out, nil
-}
-
-func getindividualdrivegroupfromportnumber(portnumber int) []byte {
-	var cmdargs1 = fmt.Sprintf(`cd "C:\Program Files (x86)\MegaRAID Storage Manager\" ; $dg=.\storcli.exe /c1 show j | ConvertFrom-Json; $dg.Controllers."Response Data"."TOPOLOGY"| where-object EID:SLOT -eq 245:%v |select-object DG, State, EID:Slot|ConvertTo-Json`, portnumber)
-	out, err := exec.Command("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe", cmdargs1).Output()
-	if err != nil {
-		msg := fmt.Sprintf(`{"message": "ERROR = %v"}`, err)
-		fmt.Printf("%v", msg)
-		return []byte(msg)
-	} //
-	return out
-}
 
 func initializediskps(drivenumber string) int {
 
@@ -1315,10 +975,8 @@ func listpaths(w http.ResponseWriter, r *http.Request) {
 "url9": "/networkio",
 "url10": "/getnetworkio",
 "url11": "/getexports", 
-"url12": "/getraiddrivestatus", 
-"url13": "/getunitinfo",
-"url14": "/getpsdriveinfo",
-"url15": "/status"
+"url12": "/getpsdriveinfo",
+"url13": "/status"
 }] }`))
 }
 
@@ -1327,15 +985,11 @@ func listpathsauthed(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"urls": 
 [{
-"url1": "/addexports/{driveletter:}/{drivename}",
-"url2": "/removeexports/{exportname}",
-"url3": "/importdrivepacks", 
-"url4": "/makeunconfiguredgood",
-"url5": "/rescandisks",
-"url6": "/createraid/0-3 ( or 4-7 or 8-11 )/{raidname} like vnir or mwir",
-"url7": "/deleteraid/0-3 ( or 4-7 or 8-11 )",
-"url8": "/initializedisk/{drive number}",
-"url9": "/initandpartitionandformatandnamedisk/{drive number}/{drive name}"
+"url1": "/addexports/{driveletter:}/{drivename}/{token}",
+"url2": "/removeexports/{exportname}/{token}",
+"url3": "/initializedisk/{drive number}/{token}",
+"url4": "/initandpartitionandformatandnamedisk/{drive number}/{drive name}/{token}",
+"url5": "/exitnow/{token}"
 }] }`))
 }
 
@@ -1963,10 +1617,6 @@ func mainroutine() {
 	api.HandleFunc("/status", status).Methods(http.MethodGet)
 	//gets nfs export names and locations on edos
 	api.HandleFunc("/getexports", getexports).Methods(http.MethodGet)
-	//gets the drive status (total # and unconfigured good or bad, or configured good)
-	api.HandleFunc("/getraiddrivestatus", getraiddrivestatus).Methods(http.MethodGet)
-	//displays info on the raid unit if it imported
-	api.HandleFunc("/getunitinfo", GetUnitInfo).Methods(http.MethodGet)
 	//will get all the disks on controller 1, windows disks, not the raid data
 	api.HandleFunc("/getpsdriveinfo", getpsdriveinfo).Methods(http.MethodGet)
 
@@ -1978,20 +1628,11 @@ func mainroutine() {
 	//will try to initialize a raw disk (just formed raids are raw, and have no partition table yet.)
 	apiauthed.HandleFunc("/initializedisk/{drivenumber}/{token}", initializedisk).Methods(http.MethodGet)
 	//attempt to delete a raid, assumes groups of four disks 0-3, 4-7, 8-11
-	////////////////////incompelte function/////////////////////////////
-	apiauthed.HandleFunc("/deleteraid/{ports}/{token}", deleteraid).Methods(http.MethodGet)
-	//attempt to create a raid, assumes groups of four disks 0-3, 4-7, 8-11
-	apiauthed.HandleFunc("/createraid/{ports}/{name}/{token}", createraidAPI).Methods(http.MethodGet)
-	//restart the controller (rescans disks)
-	apiauthed.HandleFunc("/rescandisks/{token}", rescandisks).Methods(http.MethodGet)
-	//change disk from unconfigured bad, to good. no need for opposite action
-	apiauthed.HandleFunc("/makeunconfiguredgood/{token}", MakeDrivesUnconfiguredGood).Methods(http.MethodGet)
 	//try to create a new nfs export, driveletter will be the edos drive letter or "all"
 	apiauthed.HandleFunc("/addexports/{driveletter}/{drivename}/{token}", AddExports).Methods(http.MethodGet)
 	//try to remove an nfs export, by exported name
 	apiauthed.HandleFunc("/removeexports/{exportname}/{token}", DelExports).Methods(http.MethodGet)
-	//tries to import foreign array on controller
-	apiauthed.HandleFunc("/importdrivepacks/{token}", importdrivepacks).Methods(http.MethodGet)
+	//exit service
 	apiauthed.HandleFunc("/exitnow/{token}", exitnow).Methods(http.MethodGet)
 	//shows a list of url endpoints
 	apiauthed.HandleFunc("/", listpathsauthed).Methods(http.MethodGet)
