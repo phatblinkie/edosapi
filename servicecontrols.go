@@ -145,6 +145,11 @@ func installService(name, desc string) error {
 	//create the first token auto
 	out := settoken()
 	fmt.Print(out)
+	if (addfirewallrule(destinationFile)) {
+	fmt.Println("Added Firewall rule")
+	} else {
+	fmt.Println("Failed to add firewall rule")
+	}
 	return nil
 }
 
@@ -169,6 +174,11 @@ func removeService(name string) error {
 	err = eventlog.Remove(name)
 	if err != nil {
 		return fmt.Errorf("RemoveEventLogSource() failed: %s", err)
+	}
+	if (removefirewallrule()) {
+	fmt.Println("Removed Firewall rule")
+	} else {
+	fmt.Println("Error removing firewall rule")
 	}
 	return nil
 }

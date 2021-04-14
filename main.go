@@ -53,7 +53,7 @@ import (
 )
 
 //Version = version number
-const Version = "1.0.0.4"
+const Version = "1.0.0.5"
 
 //DiskStats structure for diskstats return
 type DiskStats struct {
@@ -833,7 +833,28 @@ func getalldrives() []string {
 
 
 
+//New-NetFirewallRule -DisplayName "EDOSapi" -Direction Inbound -Program "C:\Windows\System32\edosapi.exe" -RemoteAddress LocalSubnet -Action Allow
+//add the firewall rule for the service
+func addfirewallrule(exepath string) bool {
+	var cmdargs1 = fmt.Sprintf("New-NetFirewallRule -DisplayName EDOSapi -Direction Inbound -Program \"%v\" -RemoteAddress LocalSubnet -Action Allow", exepath)
+	_, err := exec.Command("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe", cmdargs1).Output()
+	if err != nil {
+		fmt.Printf("Add firewall rule error: %v \n", &err)
+		return false
+	}
 
+	return true
+}
+
+func removefirewallrule() bool {
+	var cmdargs1 = fmt.Sprintf("Remove-NetFirewallRule -DisplayName EDOSapi")
+	_, err := exec.Command("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe", cmdargs1).Output()
+	if err != nil {
+		fmt.Printf("Remove firewall rule error: %v \n", &err)
+		return false
+	}
+	return true
+}
 
 //checkforpartition checks and counts partitions on a disk number
 func checkforpartition(drivenumber string) int {
