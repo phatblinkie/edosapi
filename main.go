@@ -1248,7 +1248,7 @@ func maketoken() string {
 
 //settoken
 func settoken() string {
-	//just to save code, and make it easy, make the password for them
+	//just to save code, and make it easy, make the token for them
 	tokenstr := maketoken()
 	//fmt.Printf("\ntoken %v\n", tokenstr)
 	//no we have the token, store it in registry
@@ -1261,6 +1261,26 @@ func settoken() string {
 	//registrytoken := getregistrytoken()
 
 	return out
+}
+
+func showtoken() (string, error) {
+	k, err := registry.OpenKey(registry.LOCAL_MACHINE, `SYSTEM\CurrentControlSet\Services\EDOSapi`, registry.READ)
+	defer k.Close()
+	if err != nil {
+		log.Print(err)
+		return "ERROR: Unable to open registry key, Run as Administrator?", err
+	}
+
+	key := "token"
+	
+	val, _, err := k.GetStringValue(key); 
+	if err != nil {
+		log.Print(err)
+		return "ERROR: failed to find token, has the token been set yet?", err
+	}
+	
+	out := fmt.Sprintf("\n\n---> Token is  %v\n\n---> Copy the token, and set inside the Awapss Data Manager\n\n", val)
+	return out, err
 }
 
 //storetoken stores a string in the registry
@@ -1306,6 +1326,11 @@ func parseArgs() {
 	//set the access token in the registry, only one allowed so over it, if its already there. then exit.
 	case "settoken":
 		result := settoken()
+		log.Print(result)
+		//os.Exit(1)
+		return
+	case "showtoken":
+		result, _ := showtoken()
 		log.Print(result)
 		//os.Exit(1)
 		return
@@ -1564,7 +1589,8 @@ func usage(errmsg string) {
 			"		debug    = Runs the program in this shell (may need to stop service first)\n"+
 			"		start    = Starts the service if installed\n"+
 			"		stop	 = Stops the service if installed\n"+
-			"		settoken = Sets the token required for the Awapss Data Manager to interface with the EDOS\n",
+			"		settoken = Sets the token required for the Awapss Data Manager to interface with the EDOS\n"+
+			"		showtoken= Displays the current token required for the Awapss Data Manager to interface with the EDOS\n",
 		errmsg, os.Args[0])
 	os.Exit(2)
 }
