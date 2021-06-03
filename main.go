@@ -1524,8 +1524,8 @@ func mainroutine() {
 	apiauthed.HandleFunc("/addexports/{driveletter}/{drivename}/{token}", AddExports).Methods(http.MethodGet)
 	//try to remove an nfs export, by exported name
 	apiauthed.HandleFunc("/removeexports/{exportname}/{token}", DelExports).Methods(http.MethodGet)
-	//exit service
-	apiauthed.HandleFunc("/exitnow/{token}", exitnow).Methods(http.MethodGet)
+	//exit service (disabled)
+	//apiauthed.HandleFunc("/exitnow/{token}", exitnow).Methods(http.MethodGet)
 	//shows a list of url endpoints
 	apiauthed.HandleFunc("/", listpathsauthed).Methods(http.MethodGet)
 	//	api.HandleFunc("/getraidlogs", getraidlogs).Methods(http.MethodGet)
@@ -1583,14 +1583,14 @@ func usage(errmsg string) {
 		"%s\n\n"+
 			"usage: %s <command>\n"+
 			"       where <command> is one of\n\n"+
-			"		install  = Installs the service, starts service, sets access token \n"+
-			"		version  = Displays Version \n"+
-			"		remove   = removes the service, stops the service, removes token\n"+
-			"		debug    = Runs the program in this shell (may need to stop service first)\n"+
-			"		start    = Starts the service if installed\n"+
-			"		stop	 = Stops the service if installed\n"+
-			"		settoken = Sets the token required for the Awapss Data Manager to interface with the EDOS\n"+
-			"		showtoken= Displays the current token required for the Awapss Data Manager to interface with the EDOS\n",
+			"		install   = Installs the service, starts service, sets access token \n"+
+			"		version   = Displays Version \n"+
+			"		remove    = removes the service, stops the service, removes token\n"+
+			"		debug     = Runs the program in this shell (may need to stop service first)\n"+
+			"		start     = Starts the service if installed\n"+
+			"		stop	  = Stops the service if installed\n"+
+			"		settoken  = Sets the token required for the Awapss Data Manager to interface with the EDOS\n"+
+			"		showtoken = Displays the current token required for the Awapss Data Manager to interface with the EDOS\n",
 		errmsg, os.Args[0])
 	os.Exit(2)
 }
