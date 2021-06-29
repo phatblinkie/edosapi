@@ -11,7 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"time"
-	"io/ioutil"
+
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/debug"
 	"golang.org/x/sys/windows/svc/eventlog"
@@ -92,34 +92,35 @@ func installService(name, desc string) error {
 	}
 
 	//copy to the right place, so its not accidentally run from someoneons desktop
-		prog := os.Args[0]
-	    inputfile, err := ioutil.ReadFile(exepath)
-        if err != nil {
-                fmt.Println(err)
-                return err
-        }
-		string1 := "C:\\Windows\\System32\\"
-		string2 := prog
-		destinationFile := string1 + string2
-
-		//remove file if its already there
-		if _, err := os.Stat(destinationFile); err == nil {
-			fmt.Println("Existing service file found, Removing ", destinationFile)
-			e := os.Remove(destinationFile)
-			if e != nil {
-				fmt.Println("Error found old service file, but unable to remove ", destinationFile)
-				fmt.Println(err)
-			}
-		}
-		//write out the new file
-		fmt.Printf("\nCopying %v to %v \n", exepath, destinationFile)
-        err = ioutil.WriteFile(destinationFile, inputfile, 0644)
-        if err != nil {
-                fmt.Println("Error creating", destinationFile)
-                fmt.Println(err)
-                return err
-        }
-		//os.Exit(1)
+	//prog := os.Args[0]
+	//inputfile, err := ioutil.ReadFile(exepath)
+	//if err != nil {
+	//	fmt.Println(err)
+	//	return err
+	//}
+	//		string1 := "C:\\Windows\\System32\\"
+	//		string2 := prog
+	//		destinationFile := string1 + string2
+	destinationFile := exepath
+	//
+	//		//remove file if its already there
+	//		if _, err := os.Stat(destinationFile); err == nil {
+	//			fmt.Println("Existing service file found, Removing ", destinationFile)
+	//			e := os.Remove(destinationFile)
+	//			if e != nil {
+	//				fmt.Println("Error found old service file, but unable to remove ", destinationFile)
+	//				fmt.Println(err)
+	//			}
+	//		}
+	//		//write out the new file
+	//		fmt.Printf("\nCopying %v to %v \n", exepath, destinationFile)
+	//        err = ioutil.WriteFile(destinationFile, inputfile, 0644)
+	//        if err != nil {
+	//                fmt.Println("Error creating", destinationFile)
+	//                fmt.Println(err)
+	//                return err
+	//        }
+	//		//os.Exit(1)
 
 	m, err := mgr.Connect()
 	if err != nil {
@@ -145,10 +146,10 @@ func installService(name, desc string) error {
 	//create the first token auto
 	out := settoken()
 	fmt.Print(out)
-	if (addfirewallrule(destinationFile)) {
-	fmt.Println("Added Firewall rule")
+	if addfirewallrule(destinationFile) {
+		fmt.Println("Added Firewall rule")
 	} else {
-	fmt.Println("Failed to add firewall rule")
+		fmt.Println("Failed to add firewall rule")
 	}
 	return nil
 }
@@ -175,10 +176,10 @@ func removeService(name string) error {
 	if err != nil {
 		return fmt.Errorf("RemoveEventLogSource() failed: %s", err)
 	}
-	if (removefirewallrule()) {
-	fmt.Println("Removed Firewall rule")
+	if removefirewallrule() {
+		fmt.Println("Removed Firewall rule")
 	} else {
-	fmt.Println("Error removing firewall rule")
+		fmt.Println("Error removing firewall rule")
 	}
 	return nil
 }
